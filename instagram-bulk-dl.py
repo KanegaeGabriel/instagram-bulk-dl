@@ -24,67 +24,69 @@ total = len(urlList)
 for url in urlList:
     current += 1
 
-    try:
-        response = urlopen(url)
-        html = response.read().decode('UTF-8')
+    # try:
+    response = urlopen(url)
+    html = response.read().decode('UTF-8')
 
-        allImg = [m.start(0) for m in re.finditer(patternImg, html)]
-        allVid = [m.start(0) for m in re.finditer(patternVid, html)]
-        
-        imgList = []
-        vidList = []
+    allImg = [m.start(0) for m in re.finditer(patternImg, html)]
+    allVid = [m.start(0) for m in re.finditer(patternVid, html)]
+    
+    imgList = []
+    vidList = []
 
-        for i in allImg: # Finding all images
-            s = i + len(patternImg) + 1
-            e = s + re.search(".jpg", html[s:s+200]).end()
+    for i in allImg: # Finding all images
+        s = i + len(patternImg) + 1
+        e = s + re.search(".net\",", html[s:s+300]).end() - 2
 
-            isVideo = s + re.search(patternIsVideo, html[s:s+3000]).end()
-            if html[isVideo:isVideo+4] != "true":
-                imgList.append(html[s:e])
+        isVideo = s + re.search(patternIsVideo, html[s:s+3000]).end()
+        if html[isVideo:isVideo+4] != "true":
+            imgList.append(html[s:e])
 
-        for i in allVid: # Finding all videos
-            s = i + len(patternVid) + 1
-            e = s + re.search(".mp4", html[s:s+200]).end()
-            vidList.append(html[s:e])
+    for i in allVid: # Finding all videos
+        s = i + len(patternVid) + 1
+        e = s + re.search(".net\",", html[s:s+300]).end() - 2
+        vidList.append(html[s:e])
 
-        # Remove first image as it's a duplicate (thumbnail)
-        if len(imgList) > 1:
-            imgList.pop(0)
+    # Remove first image as it's a duplicate (thumbnail)
+    if len(imgList) > 1:
+        imgList.pop(0)
 
-        totalSub = len(imgList) + len(vidList)
-        currentSub = 0
+    totalSub = len(imgList) + len(vidList)
+    currentSub = 0
 
-        if totalSub < 1:
-            raise Exception("Empty page?")
-        elif totalSub > 1:
-            print("[{}/{}]    {}".format(current, total, url))
+    if totalSub < 1:
+        raise Exception("Empty page?")
+    elif totalSub > 1:
+        print("[{}/{}]    {}".format(current, total, url))
 
-        for img in imgList: # Downloading all images
-            currentSub += 1
-            filename = img.split("/")[-1]
-            f = open(filename, 'wb')
-            f.write(urlopen(img).read())
-            f.close()
+    for img in imgList: # Downloading all images
+        currentSub += 1
+        filename = img.split("/")[-1].split("?")[0]
 
-            if totalSub > 1:
-                print("\t[{}/{}]    ({})".format(currentSub, totalSub, filename))
-            else:
-                print("[{}/{}]    {} ({})".format(current, total, url, filename))
+        filecontent = urlopen(img).read()
+        with open(filename, 'wb') as f:
+            f.write(filecontent)
 
-        for video in vidList: # Downloading all videos
-            currentSub += 1
-            filename = video.split("/")[-1]
-            f = open(filename, 'wb')
-            f.write(urlopen(video).read())
-            f.close()
+        if totalSub > 1:
+            print("\t[{}/{}]    ({})".format(currentSub, totalSub, filename))
+        else:
+            print("[{}/{}]    {} ({})".format(current, total, url, filename))
 
-            if totalSub > 1:
-                print("\t[{}/{}]    ({})".format(currentSub, totalSub, filename))
-            else:
-                print("[{}/{}]    {}    ({})".format(current, total, url, filename))
-    except:
-        print("[{}/{}]    [ERROR] {}".format(current, total, url))
-        errors.append(url) # Error raised, append to error array
+    for video in vidList: # Downloading all videos
+        currentSub += 1
+        filename = video.split("/")[-1].split("?")[0]
+
+        filecontent = urlopen(video).read()
+        with open(filename, 'wb') as f:
+            f.write(filecontent)
+
+        if totalSub > 1:
+            print("\t[{}/{}]    ({})".format(currentSub, totalSub, filename))
+        else:
+            print("[{}/{}]    {} ({})".format(current, total, url, filename))
+    # except:
+    #     errors.append(url) # Error raised, append to error array
+    #     print("[{}/{}]    [ERROR] {}".format(current, total, url))
 
 print("Finished.")
 
