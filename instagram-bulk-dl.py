@@ -36,7 +36,7 @@ for url in urlList:
 
         for i in allImg: # Finding all images
             s = i + len(patternImg) + 1
-            e = s + re.search(".net\",", html[s:s+300]).end() - 2
+            e = s + re.search("\",", html[s:s+300]).end() - 2
 
             isVideo = s + re.search(patternIsVideo, html[s:s+3000]).end()
             if html[isVideo:isVideo+4] != "true":
@@ -44,7 +44,7 @@ for url in urlList:
 
         for i in allVid: # Finding all videos
             s = i + len(patternVid) + 1
-            e = s + re.search(".net\",", html[s:s+300]).end() - 2
+            e = s + re.search("\",", html[s:s+300]).end() - 2
             vidList.append(html[s:e])
 
         # Remove first image as it's a duplicate (thumbnail)
@@ -56,8 +56,8 @@ for url in urlList:
 
         if totalSub < 1:
             raise Exception("Empty page?")
-        elif totalSub > 1:
-            print("[{}/{}]    {}".format(current, total, url))
+        
+        print("[{}/{}] {}".format(current, total, url))
 
         for img in imgList: # Downloading all images
             currentSub += 1
@@ -67,10 +67,7 @@ for url in urlList:
             with open(filename, 'wb') as f:
                 f.write(filecontent)
 
-            if totalSub > 1:
-                print("\t[{}/{}]    ({})".format(currentSub, totalSub, filename))
-            else:
-                print("[{}/{}]    {} ({})".format(current, total, url, filename))
+            print("\t[{}/{}] {}".format(currentSub, totalSub, filename))
 
         for video in vidList: # Downloading all videos
             currentSub += 1
@@ -80,20 +77,18 @@ for url in urlList:
             with open(filename, 'wb') as f:
                 f.write(filecontent)
 
-            if totalSub > 1:
-                print("\t[{}/{}]    ({})".format(currentSub, totalSub, filename))
-            else:
-                print("[{}/{}]    {} ({})".format(current, total, url, filename))
-    except:
+            print("\t[{}/{}] {}".format(currentSub, totalSub, filename))
+    except Exception as e:
         errors.append(url) # Error raised, append to error array
-        print("[{}/{}]    [ERROR] {}".format(current, total, url))
+        print("[{}/{}] [ERROR] {}".format(current, total, url))
+        print("\t{}".format(e))
 
+print()
 print("Finished.")
 
 if len(errors) < 1:
     print("All links successfully downloaded.")
 else:
-    print()
     print("Errors (might be private accounts?):")
     for e in errors:
         print(e)
