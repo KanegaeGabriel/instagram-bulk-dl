@@ -1,6 +1,5 @@
 # Instagram Bulk Downloader
-Downloads all public images/videos from a list of Instagram URLs.
+Downloads pictures/videos from Instagram URLs.
 
 ## Usage
-- Have a `.txt` file alongside the script with a list of Instagram URLs of the form `https://www.instagram.com/p/ID/`, each on a new line.
-- Run `python3 instagram-bulk-dl.py [FILENAME]`. By default, FILENAME is `list.txt`.
+- Run `python3 instagram-bulk-dl.py (url_1) [url_2] ... [url_n]`.

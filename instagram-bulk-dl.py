@@ -1,108 +1,76 @@
+from time import time
+from sys import argv
 import requests
 import shutil
-from sys import argv
+import json
 import re
 
-patternImg = '\"display_url\":'
-patternVid = '\"video_url\":'
-patternIsVideo = '\"is_video\":'
-
 def writeToFile(filename, filecontent):
-    with open(filename, 'wb') as f:
+    with open(filename, "wb") as f:
         filecontent.raw.decode_content = True
         shutil.copyfileobj(filecontent.raw, f)
 
-def downloadFromList(urlList):
-    urlList = list(set(urlList)) # Remove URL duplicates
-    urlList.sort()
+    return
 
-    errors = []
+jsonPattern = re.compile('(?:<script type="text\/javascript">window\._sharedData *= *)(.*)(?:; *<\/script>)')
+t0 = time()
 
-    current = 0
-    total = len(urlList)
-    for url in urlList:
-        current += 1
+if len(argv) < 2:
+    print("  Usage: python3 {} (url_1) [url_2] ... [url_n]".format(argv[0]))
+    exit()
 
-        try:
-            response = requests.get(url)
-            html = str(response.text)
+urls = [url.rstrip("/") for url in argv[1:]]
+mediaAmt = len(urls)
 
-            allImg = [m.start(0) for m in re.finditer(patternImg, html)]
-            allVid = [m.start(0) for m in re.finditer(patternVid, html)]
-            
-            imgList = []
-            vidList = []
+errors = []
 
-            for i in allImg: # Finding all images
-                s = i + len(patternImg) + 1
-                e = s + re.search("\",", html[s:s+300]).end() - 2
+for i, url in enumerate(urls):
+    mediaCode = url.split("/")[-1]
 
-                isVideo = s + re.search(patternIsVideo, html[s:s+3000]).end()
-                if html[isVideo:isVideo+4] != "true":
-                    imgList.append(html[s:e])
+    if "/" not in url:
+        url = "https://www.instagram.com/p/" + url
 
-            for i in allVid: # Finding all videos
-                s = i + len(patternVid) + 1
-                e = s + re.search("\",", html[s:s+300]).end() - 2
-                vidList.append(html[s:e])
-
-            # Remove first image as it's a duplicate (thumbnail)
-            if len(imgList) > 1:
-                imgList.pop(0)
-
-            countTotal = len(imgList) + len(vidList)
-            countCurrent = 0
-
-            if countTotal < 1:
-                raise Exception("Empty page?")
-            
-            print("[{}/{}] {}".format(current, total, url))
-
-            for img in imgList: # Downloading all images
-                countCurrent += 1
-                filename = img.split("/")[-1].split("?")[0]
-
-                img = img.replace("\\u0026", "&") # TODO Fix encoding
-                fileContent = requests.get(img, stream=True)
-                writeToFile(filename, fileContent)
-
-                print("\t[{}/{}] {}".format(countCurrent, countTotal, filename))
-
-            for vid in vidList: # Downloading all videos
-                countCurrent += 1
-                filename = vid.split("/")[-1].split("?")[0]
-
-                vid = vid.replace("\\u0026", "&") # TODO Fix encoding
-                fileContent = requests.get(vid, stream=True)
-                writeToFile(filename, fileContent)
-
-                print("\t[{}/{}] {}".format(countCurrent, countTotal, filename))
-        except Exception as e:
-            errors.append(url) # Error raised, append to error array
-            print("[{}/{}] [ERROR] {}".format(current, total, url))
-            print("\t{}".format(e))
-
-    print()
-    print("Finished.")
-
-    if len(errors) < 1:
-        print("All links successfully downloaded.")
-    else:
-        print("Errors (might be private accounts):")
-        for e in errors:
-            print(e)
-
-def main():
-    filename = argv[1] if len(argv) > 1 else "list.txt"
+    print("[{}/{}] {}".format(i+1, mediaAmt, mediaCode))
     
+    # Get HTML
+    response = requests.get(url)
+    if response.status_code != 200:
+        print("    [ERROR] {} ({})".format(response.status_code, url))
+        errors.append(url)
+        continue
+
+    # Get window._sharedData from HTML
     try:
-        with open(filename) as f:
-            urlList = [i.strip().split("?")[0] for i in f.readlines()]
-    except FileNotFoundError:
-        print("File '{}' not found. Exiting...".format(filename))
-        return
+        match = re.search(jsonPattern, response.text)
+        jsonObject = match.group(1)
+        jsonObject = json.loads(jsonObject)
+    except Exception as e:
+        print("    [ERROR] JSON ({})".format(e))
+        errors.append(url)
+        continue
 
-    downloadFromList(urlList)
+    # Handle multiple pictures/videos
+    media = jsonObject["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]
+    if "edge_sidecar_to_children" in media:
+        media = [m["node"] for m in media["edge_sidecar_to_children"]["edges"]]
+    else:
+        media = [media]
 
-if __name__ == "__main__":
-    main()
+    # Download all files
+    subMediaAmt = len(media)
+    for i, m in enumerate(media):
+        subMediaCode = m["shortcode"]
+        url = m["video_url"] if m["is_video"] else m["display_url"]
+
+        filename = url.split("?")[0].split("/")[-1]
+        fileContent = requests.get(url, stream=True)
+
+        writeToFile(filename, fileContent)
+        print("    [{}/{}] {} ({})".format(i+1, subMediaAmt, subMediaCode, filename))
+
+print()
+print("{}/{} URLs successfully downloaded in {:.2f}s.".format(len(urls)-len(errors), len(urls), time()-t0))
+if errors:
+    print("Errors (e.g. connection error, private account):".format(len(errors)))
+    for error in errors:
+        print("  {}".format(error))
