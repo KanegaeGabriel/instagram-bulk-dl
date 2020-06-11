@@ -35,7 +35,7 @@ for i, url in enumerate(urls):
     # Get HTML
     response = requests.get(url)
     if response.status_code != 200:
-        print("    [ERROR] {} ({})".format(response.status_code, url))
+        print("  [ERROR] {} ({})".format(response.status_code, url))
         errors.append(url)
         continue
 
@@ -57,23 +57,27 @@ for i, url in enumerate(urls):
         media = [media]
 
     # Download all files
+    error = False
     subMediaAmt = len(media)
     for i, m in enumerate(media):
         subMediaCode = m["shortcode"]
-        url = m["video_url"] if m["is_video"] else m["display_url"]
+        mediaURL = m["video_url"] if m["is_video"] else m["display_url"]
 
-        filename = url.split("?")[0].split("/")[-1]
+        filename = mediaURL.split("?")[0].split("/")[-1]
 
-        print("    [{}/{}] {} ({})".format(i+1, subMediaAmt, subMediaCode, filename))
+        print("  [{}/{}] {} ({})".format(i+1, subMediaAmt, subMediaCode, filename))
 
-        fileContent = requests.get(url, stream=True)
+        fileContent = requests.get(mediaURL, stream=True)
 
         if fileContent.status_code != 200:
-            print("        [ERROR] {} ({})".format(fileContent.status_code, url))
-            errors.append(url)
+            print("    [ERROR] {} ({})".format(fileContent.status_code, mediaURL))
+            error = True
             continue
 
         writeToFile(filename, fileContent)
+    
+    if error:
+        errors.append(url)
 
 print()
 print("{}/{} URLs successfully downloaded in {:.2f}s.".format(len(urls)-len(errors), len(urls), time()-t0))
