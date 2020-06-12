@@ -1,6 +1,5 @@
 from time import time
 from sys import argv
-import requests
 import shutil
 import json
 import re
@@ -11,6 +10,12 @@ def writeToFile(filename, filecontent):
         shutil.copyfileobj(filecontent.raw, f)
 
     return
+
+try:
+    import requests
+except ImportError:
+    print("You don't seem to have 'requests' installed. Maybe try running 'pip3 install requests'.")
+    exit()
 
 jsonPattern = re.compile('(?:<script type="text\/javascript">window\._sharedData *= *)(.*)(?:; *<\/script>)')
 t0 = time()
