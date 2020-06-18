@@ -55,7 +55,13 @@ for i, url in enumerate(urls):
         continue
 
     # Handle multiple pictures/videos
-    media = jsonObject["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]
+    try:
+        media = jsonObject["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]
+    except KeyError:
+        print("    [ERROR] Private URL?")
+        errors.append(url)
+        continue
+
     if "edge_sidecar_to_children" in media:
         media = [m["node"] for m in media["edge_sidecar_to_children"]["edges"]]
     else:
